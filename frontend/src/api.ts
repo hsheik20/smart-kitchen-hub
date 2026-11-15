@@ -1,6 +1,7 @@
 // Thin client for the FastAPI backend. All quantity/matching logic stays server-side.
 import type {
-  Ingredient, InventoryItem, InventoryRecord, MatchRequest, MatchResponse, Recipe, StockStatus, UnitInfo,
+  DeductionApplyResponse, DeductionBatch, DeductionProposal, Ingredient, InventoryItem, InventoryRecord,
+  MatchRequest, MatchResponse, Quantity, QuantityCombineResult, Recipe, StockStatus, UnitInfo,
 } from './types'
 
 export class ApiError extends Error {
@@ -52,4 +53,16 @@ export const api = {
   match: (body: MatchRequest) => request<MatchResponse>('/api/recipes/match', post(body)),
   stockStatus: (items: InventoryItem[]) =>
     request<StockStatus[]>('/api/inventory/stock-status', post({ inventory: items.map(toRecord) })),
+  deductionPreview: (recipe_id: string, servings_cooked: number | null, items: InventoryItem[]) =>
+    request<DeductionProposal>('/api/deductions/preview', post({ recipe_id, servings_cooked, inventory: items.map(toRecord) })),
+  deductionApply: (recipe_id: string, servings_cooked: number | null, items: InventoryItem[], include: string[]) =>
+    request<DeductionApplyResponse>('/api/deductions/apply', post({ recipe_id, servings_cooked, inventory: items.map(toRecord), include })),
+  deductionUndo: (batch: DeductionBatch, items: InventoryItem[]) =>
+    request<{ inventory: InventoryRecord[]; restored: string[] }>('/api/deductions/undo', post({ batch, inventory: items.map(toRecord) })),
+  combine: (pairs: { existing: Quantity | null; incoming: Quantity | null }[]) =>
+    request<QuantityCombineResult[]>('/api/quantities/combine', post({ pairs })),
 }
+
+/** Quantities sent to the API must not carry unknown keys or empty display text. */
+export const cleanQuantity = (q: Quantity): Quantity =>
+  ({ amount: q.amount, unit: q.unit, accuracy: q.accuracy, display_text: q.display_text ?? null })

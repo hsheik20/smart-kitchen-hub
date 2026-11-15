@@ -2,13 +2,15 @@
 import { Icon } from '../components/Icon'
 import { Badge, Banner, ErrorState, Loading, SampleBadge } from '../components/ui'
 import { minutesLabel } from '../format'
-import { useMatches, useRecipe } from '../hooks'
+import { groceryFromMatch } from '../grocery'
+import { useAddToGrocery, useMatches, useRecipe } from '../hooks'
 import { href } from '../router'
 import { useStore } from '../state'
 import { CheckBadge, checksFor, isScaled, shownAmount } from './recipeParts'
 
 export function RecipeScreen({ id }: { id: string }) {
-  const { prefs } = useStore()
+  const { prefs, notify } = useStore()
+  const addToGrocery = useAddToGrocery()
   const recipe = useRecipe(id)
   const matches = useMatches({ applyTimeFilter: false })
 
@@ -52,6 +54,11 @@ export function RecipeScreen({ id }: { id: string }) {
         <section className="panel ingredients-panel" aria-labelledby="ing-h">
           <div className="panel-head">
             <h2 id="ing-h">Ingredients</h2>
+            {match && groceryFromMatch(match).length > 0 && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => addToGrocery(groceryFromMatch(match)).catch((e: Error) => notify(e.message))}>
+                <Icon name="cart" size={18} /> Add {groceryFromMatch(match).length} missing to grocery list
+              </button>
+            )}
             {scaled
               ? <Badge tone="sage">Scaled for {prefs.servings} (×{match!.scale_factor})</Badge>
               : <span className="muted">As written</span>}

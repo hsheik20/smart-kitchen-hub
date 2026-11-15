@@ -64,11 +64,11 @@ export function CookScreen({ id, step }: { id: string; step: number }) {
         <div className="cook-stage cook-done">
           <span className="big-check"><Icon name="check" size={48} /></span>
           <h1>Enjoy your meal!</h1>
-          <p className="muted">My Kitchen has not been changed. Inventory deductions will be added in a later update.</p>
+          <p className="muted">My Kitchen hasn't changed. Review what this recipe used and confirm before anything is deducted.</p>
           <div className="action-row">
             <button type="button" className="btn btn-secondary btn-lg" onClick={() => go(total)}><Icon name="left" size={22} /> Last step</button>
-            <a className="btn btn-secondary btn-lg" href={href({ name: 'recipe', id })}>Full recipe</a>
-            <a className="btn btn-primary btn-lg" href={href({ name: 'home' })}>Home</a>
+            <a className="btn btn-secondary btn-lg" href={href({ name: 'home' })}>Done — no changes</a>
+            <a className="btn btn-primary btn-lg" href={href({ name: 'review', id })}><Icon name="kitchen" size={22} /> Review inventory usage</a>
           </div>
         </div>
       ) : current && (

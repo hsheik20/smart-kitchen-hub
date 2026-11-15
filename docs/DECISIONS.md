@@ -83,3 +83,16 @@ Decision: The same app renders in three modes. Browser view fills the window res
 
 ## ADR-024 — No new frontend dependencies
 Decision: Hash-based routing, icons (inline SVG), and UI components are written in-project instead of adding a router, icon or component library. Rationale: small bundle for the Pi, fewer supply-chain and upgrade risks in a five-week project.
+
+---
+## Decisions added Nov 15, 2026 (Phase 3 part 2: grocery list and confirmed deductions)
+ADR-001 to ADR-024 are unchanged.
+
+## ADR-025 — Stateless apply/undo for cooking deductions
+Decision: `POST /api/deductions/apply` takes the client's inventory and the list of lines the user ticked, recomputes the preview on the server, and applies only lines whose status is `will_deduct` / `will_deduct_to_zero`. It returns the full updated inventory and a `DeductionBatch` with before/after snapshots of each changed item. A line that would reach or pass zero marks the item `out` with quantity **unknown** (`display_text: "used up"`), never zero or negative, because the true remainder isn't known. `POST /api/deductions/undo` restores the before-snapshots only if every affected item still equals its after-snapshot (otherwise 409, all-or-nothing). The browser stores only the latest batch (survives refresh). Rationale: keeps all arithmetic and the undo safety rule in tested backend code (ADR-010, ADR-021) without pulling SQLite forward; the snapshot comparison is the stateless stand-in for "no later transaction touched these items".
+
+## ADR-026 — Grocery list in the browser; combine quantities only when compatible
+Decision: Grocery items live in browser localStorage next to the demo inventory. Adding an ingredient already on the unpurchased list asks `POST /api/quantities/combine`: amounts are summed (in the existing unit, least-certain accuracy) only when both are known and compatible; otherwise the new entry is kept as a separate line with a note, or skipped if it has no amount. Moving purchased items to My Kitchen is a separate two-step action: the user checks amounts, sees the result per item (new / restock / added / can't combine), and for incompatible units explicitly chooses which amount to keep. Supersedes the DATA_MODELS rule "otherwise the quantity becomes unknown with a note", which would discard information. Rationale: ADR-011 (grocery ≠ inventory), CLAUDE.md rule 6 (no silent merges, no invented amounts).
+
+## ADR-027 — Browser storage version 2
+Decision: `skh.state` moves to `version: 2` (`inventory`, `groceries`, `lastDeduction`, `prefs`). Version 1 data is migrated explicitly (inventory and preferences kept, empty grocery list); any other version or unreadable data resets with a visible notice. "Reset demo data" (with confirmation) clears inventory, groceries, the pending undo and the cooking position, and keeps display preferences. Rationale: adding groceries without discarding a user's demo inventory.

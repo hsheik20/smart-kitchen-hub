@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Icon } from '../components/Icon'
-import { Badge, Banner } from '../components/ui'
+import { UndoBanner } from '../components/UndoBanner'
+import { Badge, Banner, Sheet } from '../components/ui'
 import { href } from '../router'
 import { useStore } from '../state'
 
@@ -9,7 +11,9 @@ function greeting(d = new Date()) {
 }
 
 export function HomeScreen() {
-  const { inventory, prefs, catalog } = useStore()
+  const { inventory, groceries, prefs, catalog, resetDemo, notify } = useStore()
+  const [confirmReset, setConfirmReset] = useState(false)
+  const toBuy = groceries.filter((g) => !g.purchased).length
   const available = inventory.filter((i) => i.availability === 'available').length
   const last = prefs.lastCooking
   return (
@@ -53,6 +57,14 @@ export function HomeScreen() {
           </span>
           <Icon name="right" className="tile-arrow" />
         </a>
+        <a className="tile" href={href({ name: 'grocery' })}>
+          <span className="tile-icon"><Icon name="cart" size={34} /></span>
+          <span className="tile-text">
+            <strong>Grocery list</strong>
+            <small>{groceries.length === 0 ? 'Empty — add items or recipe shortages' : `${toBuy} to buy · ${groceries.length - toBuy} purchased`}</small>
+          </span>
+          <Icon name="right" className="tile-arrow" />
+        </a>
         {last ? (
           <a className="tile" href={href({ name: 'cook', id: last.recipeId, step: last.step })}>
             <span className="tile-icon"><Icon name="chef" size={34} /></span>
@@ -73,6 +85,28 @@ export function HomeScreen() {
           </a>
         )}
       </div>
+      <UndoBanner />
+      <div className="home-foot">
+        <span className="muted">Demo data is stored only in this browser.</span>
+        <button type="button" className="btn btn-ghost" onClick={() => setConfirmReset(true)}><Icon name="reset" size={20} /> Reset demo data</button>
+      </div>
+      {confirmReset && (
+        <Sheet title="Reset demo data?" onClose={() => setConfirmReset(false)} footer={<>
+          <span className="spacer" />
+          <button type="button" className="btn btn-secondary" onClick={() => setConfirmReset(false)}>Cancel</button>
+          <button type="button" className="btn btn-danger" onClick={() => { resetDemo(); setConfirmReset(false); notify('Demo data cleared.') }}>
+            <Icon name="trash" size={20} /> Clear everything
+          </button>
+        </>}>
+          <p>This permanently clears, in this browser only:</p>
+          <ul className="plain-list">
+            <li>My Kitchen ({inventory.length} item{inventory.length === 1 ? '' : 's'})</li>
+            <li>Grocery list ({groceries.length} item{groceries.length === 1 ? '' : 's'})</li>
+            <li>The undo for your last cooking update, and your cooking position</li>
+          </ul>
+          <p className="muted">Display settings (servings, filters, device preview) are kept. Recipes are not affected.</p>
+        </Sheet>
+      )}
       {catalog.error && (
         <Banner tone="danger" icon="alert" title="Backend not reachable"
           action={<button type="button" className="btn btn-secondary" onClick={catalog.retry}>Retry</button>}>

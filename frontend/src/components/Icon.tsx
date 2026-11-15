@@ -22,6 +22,8 @@ const PATHS: Record<string, string> = {
   leaf: 'M5 19c0-8 5-13 14-14-1 9-6 14-14 14zM5 19l7-7',
   trash: 'M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13',
   flag: 'M5 21V4M5 4h11l-2 4 2 4H5',
+  cart: 'M3 4h2.5l2.2 10.5a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.3M10 20.5h.01M17 20.5h.01',
+  reset: 'M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5',
 }
 
 export function Icon({ name, size = 24, className }: { name: keyof typeof PATHS | string; size?: number; className?: string }) {

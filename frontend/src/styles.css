@@ -254,7 +254,7 @@ input[type="checkbox"] { width: 26px; height: 26px; accent-color: var(--olive); 
 .filter { display: flex; flex-direction: column; gap: 10px; }
 .filter .label { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .results { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 2px 4px 4px 2px; margin: -2px -4px -4px -2px; }
-.recipe-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; transition: opacity .2s; }
+.recipe-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; transition: opacity .2s; }
 .recipe-grid.is-stale { opacity: .6; }
 .recipe-card { height: 100%; display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .recipe-card-top { display: flex; gap: 14px; align-items: center; }
@@ -381,3 +381,71 @@ input[type="checkbox"] { width: 26px; height: 26px; accent-color: var(--olive); 
   .recipe-card-foot { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ---------- Phase 3b: grocery list, deduction review, toast, reset ---------- */
+.count { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 99px; background: var(--cream-2); color: var(--ink-2); font-size: .9rem; margin-left: 6px; vertical-align: middle; }
+.btn-sm { min-height: 48px; padding: 0 14px; font-size: .92rem; }
+.small { font-size: .88rem; }
+.warn-text { color: var(--warn); font-weight: 650; }
+.warn-text svg, .small svg { vertical-align: -3px; }
+.plain-list { margin: 8px 0 12px; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+.inline-confirm { display: inline-flex; gap: 6px; }
+.form-grid.single { grid-template-columns: 1fr; }
+
+.home-tiles { grid-template-columns: repeat(3, 1fr); }
+.home .tile { min-height: 112px; padding: 18px; gap: 14px; }
+.home .tile-icon { width: 60px; height: 60px; }
+.home-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: min(720px, calc(100% - 32px)); background: var(--olive); color: var(--olive-ink); padding: 14px 20px; border-radius: 14px; box-shadow: 0 12px 32px rgb(0 0 0 / 25%); z-index: 60; font-weight: 600; animation: toast-in .2s ease-out; }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+.check-btn { flex: none; width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--line-strong); background: var(--surface); color: var(--olive-ink); display: grid; place-items: center; cursor: pointer; }
+.check-btn[aria-checked="true"] { background: var(--olive); border-color: var(--olive); }
+
+.grocery-columns, .review-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; min-height: 0; }
+.grocery-panel, .review-panel { display: flex; flex-direction: column; min-height: 0; }
+.grocery-list, .review-list { list-style: none; margin: 0; padding: 0; flex: 1; }
+.grocery-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.grocery-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.grocery-text strong { font-size: 1.08rem; }
+.grocery-qty { font-weight: 700; color: var(--olive); }
+.grocery-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .85rem; color: var(--muted); align-items: center; }
+.grocery-row.is-bought .grocery-text strong { text-decoration: line-through; color: var(--muted); }
+.move-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.move-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.move-list li { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-top: 1px solid var(--line); }
+.move-list li.is-off { opacity: .6; }
+.move-list p { margin: 0; }
+
+.review-list li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.review-list li.is-off .review-text { opacity: .55; }
+.review-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.review-text strong { display: flex; gap: 8px; align-items: center; font-size: 1.05rem; }
+.review-text .change { font-size: 1.05rem; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.review-text .change b { color: var(--olive); }
+.review-text .change svg { color: var(--muted); }
+.servings-inline { display: flex; align-items: center; gap: 12px; }
+.servings-inline .label { font-weight: 700; }
+.review-done { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; }
+.review-done .banner { text-align: left; width: min(640px, 100%); }
+
+@container app (max-width: 1100px) {
+  .home-tiles { grid-template-columns: 1fr 1fr; }
+}
+@container app (max-width: 860px) {
+  .grocery-columns, .review-columns { grid-template-columns: 1fr; flex: none; }
+  .home-tiles { grid-template-columns: 1fr; }
+}
+@container app (max-width: 640px) {
+  .nav a { font-size: .7rem; }
+  .home-foot { flex-direction: column; align-items: stretch; }
+  .action-bar { flex-direction: column-reverse; }
+  .action-bar .btn { width: 100%; white-space: normal; }
+  .servings-inline { width: 100%; justify-content: space-between; }
+  .toast { bottom: 88px; }
+}
+
+.recipe-card-foot .btn { padding: 0 14px; }
+.results.scroll-y { overflow-x: hidden; }
+@container app (max-width: 1100px) { .recipe-grid { grid-template-columns: minmax(0, 1fr); } }

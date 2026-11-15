@@ -7,11 +7,18 @@ from pydantic import BaseModel
 from .catalog import BY_ID, INGREDIENTS, clean_text, lookup_id
 from .data import RECIPES, RECIPES_BY_ID
 from .deductions import preview_deduction
+from .apply import DeductionInputError, UndoConflictError, apply_deduction, combine_quantities, undo_deduction
 from .inventory import InventoryInputError
 from .matching import match_recipes
 from .models import (
+    DeductionApplyRequest,
+    DeductionApplyResponse,
     DeductionPreviewRequest,
     DeductionProposal,
+    DeductionUndoRequest,
+    DeductionUndoResponse,
+    QuantityCombineRequest,
+    QuantityCombineResult,
     Ingredient,
     MatchRequest,
     MatchResponse,
@@ -157,3 +164,32 @@ def deductions_preview(request: DeductionPreviewRequest):
         return preview_deduction(recipe, request.inventory, request.servings_cooked)
     except InventoryInputError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
+
+
+@app.post("/api/deductions/apply", response_model=DeductionApplyResponse)
+def deductions_apply(request: DeductionApplyRequest):
+    """Apply only the confirmed lines of a server-recomputed preview. Returns the updated
+    inventory and an undo snapshot; stores nothing (inventory lives with the client, ADR-017)."""
+    recipe = RECIPES_BY_ID.get(request.recipe_id)
+    if recipe is None:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    try:
+        return apply_deduction(recipe, request.inventory, request.servings_cooked, request.include)
+    except (InventoryInputError, DeductionInputError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+
+
+@app.post("/api/deductions/undo", response_model=DeductionUndoResponse)
+def deductions_undo(request: DeductionUndoRequest):
+    """Restore a batch's before-snapshots; 409 if any affected item changed since."""
+    try:
+        inventory, restored = undo_deduction(request.batch, request.inventory)
+    except UndoConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+    return DeductionUndoResponse(inventory=inventory, restored=restored)
+
+
+@app.post("/api/quantities/combine", response_model=list[QuantityCombineResult])
+def quantities_combine(request: QuantityCombineRequest):
+    """For each pair, the sum when both amounts are known and units compatible; otherwise why not."""
+    return [combine_quantities(p.existing, p.incoming) for p in request.pairs]

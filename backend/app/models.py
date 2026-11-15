@@ -289,3 +289,83 @@ class StockStatus(BaseModel):
     display_name: str
     status: Literal["out", "low", "ok", "unknown"]
     reason: str
+
+
+# ------------------------------------------------- deduction apply / undo (ADR-025)
+class QuantityState(BaseModel):
+    """Snapshot of the fields a deduction changes."""
+
+    quantity: Quantity
+    availability: Availability
+
+
+class DeductionBatchLine(BaseModel):
+    inventory_item_id: str = Field(min_length=1, max_length=64)
+    ingredient_id: Optional[str] = None
+    display_name: str
+    before: QuantityState
+    after: QuantityState
+
+
+class DeductionBatch(BaseModel):
+    """What one confirmed cooking deduction changed; enough to undo it exactly."""
+
+    id: str = Field(min_length=1, max_length=64)
+    recipe_id: str = Field(min_length=1, max_length=100)
+    servings_cooked: Optional[int] = None
+    lines: list[DeductionBatchLine] = Field(max_length=100)
+    created_at: datetime
+
+
+class DeductionApplyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    recipe_id: str = Field(min_length=1, max_length=100)
+    servings_cooked: Optional[int] = Field(default=None, ge=1, le=30)
+    inventory: list[InventoryRecord] = Field(default_factory=list, max_length=200)
+    # Lines the user confirmed, by ingredient_id (or display_name for unmapped ingredients).
+    include: list[str] = Field(default_factory=list, max_length=100)
+
+
+class NotApplied(BaseModel):
+    display_name: str
+    reason: str
+
+
+class DeductionApplyResponse(BaseModel):
+    inventory: list[InventoryRecord]   # full list, same order as the request
+    batch: DeductionBatch
+    applied: list[str]
+    not_applied: list[NotApplied]
+
+
+class DeductionUndoRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    batch: DeductionBatch
+    inventory: list[InventoryRecord] = Field(default_factory=list, max_length=200)
+
+
+class DeductionUndoResponse(BaseModel):
+    inventory: list[InventoryRecord]
+    restored: list[str]
+
+
+# ------------------------------------------------------ quantity combine (ADR-026)
+class QuantityPair(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    existing: Optional[Quantity] = None
+    incoming: Optional[Quantity] = None
+
+
+class QuantityCombineRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pairs: list[QuantityPair] = Field(max_length=200)
+
+
+class QuantityCombineResult(BaseModel):
+    combinable: bool
+    result: Optional[Quantity] = None   # only when combinable
+    reason: str

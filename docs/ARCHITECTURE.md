@@ -35,9 +35,9 @@ Mac development uses simulated scanning; production adds device capture and visi
 - **Ingredient catalog & normalizer** [partial] — canonical ingredient IDs plus aliases; today a 6-entry alias dict in `main.py`.
 - **Unit service** [planned] — canonical units, same-dimension conversions only (mass, volume; count units match identically).
 - **Matcher/ranker** [built, presence-only] — compares confirmed ingredients to recipe ingredients; returns matched, missing, match %, and (planned) quantity checks and ranking reasons.
-- **Inventory service** [planned, P1] — inventory items, append-only transaction log, deduction preview/confirm/undo, low-stock evaluation.
-- **Grocery service** [planned, P1] — grocery items; never mutates inventory implicitly.
-- **Frontend** [built Nov 14: Home, Scan (simulated), My Kitchen, Recipes, Recipe (full view), Cook (guided); Grocery planned] — React/TS, no router or UI library. Hash routes (`#/scan`, `#/recipe/{id}`, `#/cook/{id}/{step}`). Demo inventory and UI preferences in versioned localStorage (ADR-022). All quantity, matching, scaling and low-stock logic is called from the backend; the browser only formats values. Layout targets 1280×720 and uses CSS container queries so the same breakpoints apply inside the desktop device-preview bezel. `?mode=kiosk` for the Pi (ADR-023).
+- **Inventory service** [partly built] — deduction preview / apply / undo and low-stock evaluation exist as stateless endpoints over client-supplied inventory (ADR-017, ADR-025). Stored items and the append-only transaction log remain planned with SQLite.
+- **Grocery** [built Nov 15 as browser demo data] — items in versioned localStorage; never mutates inventory implicitly. Duplicate amounts are combined only via `POST /api/quantities/combine`. A server-side grocery service remains planned with SQLite.
+- **Frontend** [built Nov 14: Home, Scan (simulated), My Kitchen, Recipes, Recipe (full view), Cook (guided); Nov 15: Grocery, deduction Review] — React/TS, no router or UI library. Hash routes (`#/scan`, `#/recipe/{id}`, `#/cook/{id}/{step}`). Demo inventory and UI preferences in versioned localStorage (ADR-022). All quantity, matching, scaling and low-stock logic is called from the backend; the browser only formats values. Layout targets 1280×720 and uses CSS container queries so the same breakpoints apply inside the desktop device-preview bezel. `?mode=kiosk` for the Pi (ADR-023).
 
 Schemas for all of the above: [DATA_MODELS.md](DATA_MODELS.md).
 
@@ -78,7 +78,11 @@ Implemented:
 - `POST /api/deductions/preview` — deduction preview; inventory in request body, writes nothing (Nov 14).
 - `GET /api/recipes/{id}/full` — structured `Recipe` (Nov 14, Phase 3)
 - `GET /api/units` — unit codes + dimension (Nov 14, Phase 3)
-- `POST /api/inventory/stock-status` — derived low-stock status; stateless (Nov 14, Phase 3) Replaces the planned `POST /api/recipes/{id}/deduction-preview` path below.
+- `POST /api/inventory/stock-status` — derived low-stock status; stateless (Nov 14, Phase 3)
+- `POST /api/deductions/apply`, `POST /api/deductions/undo` — confirmed deduction and exact undo; stateless (Nov 15, ADR-025)
+- `POST /api/quantities/combine` — compatible-only quantity sums for grocery merges and grocery → kitchen moves (Nov 15, ADR-026)
+
+(`POST /api/deductions/preview` replaced the planned `POST /api/recipes/{id}/deduction-preview` path.)
 
 Planned (shape may change; see DATA_MODELS.md):
 | Method & path | Purpose | Priority |

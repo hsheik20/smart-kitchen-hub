@@ -2,7 +2,7 @@
 
 **Project:** A Raspberry Pi–powered cooking assistant that combines camera-based ingredient recognition, recipe discovery, guided cooking, kitchen inventory, and grocery planning.
 
-**Current state (Nov 14, 2026):** Touchscreen-first React UI (home, simulated scan, My Kitchen, recipe discovery, full recipe view, guided cooking) backed by deterministic quantity-aware matching. Ingredient scanning is **simulated** (the user picks every item; no camera or AI). Inventory is **demo data stored only in the browser** (localStorage); there is no server-side persistence, grocery list, or deduction apply/undo yet.
+**Current state (Nov 15, 2026):** Touchscreen-first React UI covering all five areas: home, simulated scan, My Kitchen, recipe discovery, full recipe view, guided cooking, deduction review with undo, and a grocery list. Ingredient scanning is **simulated** (the user picks every item; no camera or AI). Inventory and groceries are **demo data stored only in the browser** (localStorage); there is no server-side persistence yet. Recipes are original sample data.
 
 ## Product areas
 1. **Ingredient scanning** — Pi camera capture, AI recognition (Week 2), user confirms/corrects results, then optionally enters an exact quantity, an estimate, or skips quantity.
@@ -31,8 +31,9 @@ Priorities: **P0** end-to-end scan → confirm → match → full recipe view �
 | Viewing & cooking | Timers | Planned | Enhancement (P1) |
 | Inventory | My Kitchen (demo) | Simulated storage | Add / edit / remove items, availability, exact/estimated/unknown amounts. Stored only in this browser (versioned localStorage, `skh.state` v1); labelled "Demo inventory" |
 | Inventory | Low-stock indicators | Implemented (demo) | User-set threshold; status computed by `POST /api/inventory/stock-status`; shown only when amount and threshold are known and comparable |
-| Inventory | Deduction preview | Partial (backend only) | `POST /api/deductions/preview` writes nothing; no UI yet. Apply/undo planned (needs SQLite) |
-| Grocery list | Missing/manual items, purchased status | Planned | P1 — next phase |
+| Inventory | Deductions after cooking | Implemented (demo) | “Review inventory usage” after guided cooking: backend preview → user ticks lines → `POST /api/deductions/apply` (backend computes results) → **Undo** of the latest update, kept across refresh, refused if those items changed since. Unknown amounts, incompatible units and items not in My Kitchen are never deducted; nothing goes negative (shortfalls mark the item used up with an unknown amount) |
+| Grocery list | Manual + recipe items, purchased, move to kitchen | Implemented (demo) | Add / edit / remove; “Add” on recipe cards and the recipe view adds missing items (recipe amount) and shortages (backend shortfall). Duplicates combine only when the backend says amounts are compatible; otherwise kept separate with a note. Purchased ≠ owned: moving to My Kitchen is a separate two-step, confirmed action. Stored in browser localStorage |
+| Platform | Reset demo data | Implemented | Home → “Reset demo data” (confirmation) clears inventory, groceries and the pending undo |
 | Platform | Touchscreen layout | Implemented | Designed for 1280×720 landscape; responsive to desktop and phone widths |
 | Platform | Device preview / kiosk | Implemented | Desktop "Device preview" shows the app in a simulated 1280×720 bezel; `?mode=kiosk` fills the screen with no bezel. Not yet tested on Pi hardware |
 | Platform | Server persistence | Planned | SQLite in Week 3 |
@@ -65,7 +66,11 @@ npm run dev
 
 Open the URL printed by Vite (typically `http://127.0.0.1:5173`). The frontend proxies `/api` to FastAPI.
 
-Demo journey: **Home → Add ingredients** (simulated: tap items, verify amounts, save) **→ My Kitchen** (edit items, set a low-stock alert) **→ Recipes** (servings, time, pantry-staple toggle) **→ View → Start guided cooking**.
+Demo journeys:
+1. **Cooking:** Home → Add ingredients (simulated: tap items, verify amounts, save) → My Kitchen → Recipes (servings, time, pantry-staple toggle) → View → Start guided cooking → Finish → **Review inventory usage** → Update My Kitchen → **Undo** (on the confirmation screen, My Kitchen, or Home).
+2. **Groceries:** Recipes → **Add** on a recipe card (or “Add missing to grocery list” in the recipe view) → Grocery → tick items as purchased → **Move to My Kitchen…** → check amounts → confirm.
+
+Start over any time with Home → **Reset demo data**.
 
 Display modes:
 - **Browser view** (default): responsive layout filling the window.
@@ -85,7 +90,14 @@ cd frontend
 npm run build
 ```
 
-Last verified Nov 14, 2026 (Claude Code session on the owner's Mac): backend 91 passed (1 Starlette/httpx deprecation warning); frontend type-check and production build succeeded. A scripted headless-Chrome walkthrough (36 checks, 1280×720, device preview, kiosk, 390×844 phone) passed with no console errors; screenshots are in `docs/screenshots/`. Not yet tried by hand on a physical touchscreen.
+Browser walkthrough (repeatable; no extra dependencies, needs a local Chrome): with the backend and `npm run dev` running,
+```bash
+cd frontend
+npm run walkthrough      # screenshots + report to <system tmp>/skh-walkthrough; exits 1 on any failure
+```
+It covers both demo journeys, refresh persistence, undo (including the refused-after-edit case), reset, storage migration, 1280×720 overflow and touch-target checks, device preview, kiosk and a 390×844 phone layout. Set `CHROME_PATH` if Chrome is not at the macOS default location.
+
+Last verified Nov 15, 2026 (Claude Code session on the owner's Mac): backend 108 passed (1 Starlette/httpx deprecation warning); frontend type-check and production build succeeded; walkthrough 29 checks + 11 layout measurements passed with no console errors. Screenshots in `docs/screenshots/`. Not yet tried by hand on a physical touchscreen.
 
 ## API endpoints
 Implemented:
@@ -98,6 +110,9 @@ Implemented:
 - `GET /api/recipes/{id}/full` — complete structured recipe (used by the full recipe view and guided cooking)
 - `GET /api/units` — canonical unit codes with dimension
 - `POST /api/inventory/stock-status` — derived low-stock status (`out/low/ok/unknown`) for client-supplied inventory; stores nothing
+- `POST /api/deductions/apply` — body `{recipe_id, servings_cooked, inventory, include: [ingredient ids]}`; recomputes the preview, applies only confirmed deductible lines, returns updated inventory + an undo `batch`; stores nothing
+- `POST /api/deductions/undo` — body `{batch, inventory}`; restores the batch's before-snapshots, or **409** if any affected item changed since
+- `POST /api/quantities/combine` — body `{pairs: [{existing, incoming}]}`; sums only when both amounts are known and units compatible, otherwise says why not
 
 The two original GET recipe endpoints keep their v0.1 flat shape for compatibility (ADR-016); the new UI no longer uses them. Interactive docs: `http://127.0.0.1:8000/docs`.
 
@@ -105,7 +120,11 @@ Planned endpoints (scans, inventory, deductions, grocery list) are listed in [do
 
 ## Known issues
 - Local Git repository only; no GitHub remote yet.
-- Demo inventory lives in one browser's localStorage; it is not shared between devices and is lost if site data is cleared.
+- Demo inventory, groceries and the pending undo live in one browser's localStorage (`skh.state`, version 2); not shared between devices, lost if site data is cleared.
+- Only the most recent cooking update can be undone.
+- When a deduction uses up an item, its remaining amount is recorded as unknown (“used up”), not zero; the user can correct it by hand.
+- Moving a purchased item whose units can't be combined with the kitchen amount asks the user to keep one amount or the other; the two are never added.
+- Sample recipe quantities have known inconsistencies flagged for owner review (see `docs/BACKLOG.md`, SKH-03).
 - Low-stock "can't compare" messages show raw unit codes (e.g. "clove", "g").
 - Touch interaction has been checked only in a headless browser, not on a physical touchscreen.
 - Restricted-instruction recipes show no link to the source URL (no such recipes exist yet).

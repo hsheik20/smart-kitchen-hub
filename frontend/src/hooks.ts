@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, toRecord } from './api'
-import { useStore } from './state'
+import { addToGroceryList, summarize } from './grocery'
+import { useStore, type NewGroceryItem } from './state'
 import type { MatchResponse, Recipe } from './types'
 
 export interface Async<T> {
@@ -41,4 +42,35 @@ export function useMatches(opts: { applyTimeFilter: boolean } = { applyTimeFilte
 
 export function useRecipe(id: string): Async<Recipe> {
   return useAsync(() => api.recipe(id), [id])
+}
+
+/** Add items to the grocery list (backend decides whether duplicates can be combined) and report what happened. */
+export function useAddToGrocery() {
+  const { groceries, setGroceries, notify } = useStore()
+  return async (items: NewGroceryItem[]) => {
+    const result = await addToGroceryList(groceries, items)
+    setGroceries(() => result.next)
+    notify(summarize(result))
+    return result
+  }
+}
+
+/** Undo the most recent confirmed cooking deduction. The backend refuses (409) if those items changed since. */
+export function useUndoDeduction() {
+  const { lastDeduction, inventory, applyServerInventory, setLastDeduction, notify } = useStore()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const undo = async () => {
+    if (!lastDeduction) return
+    setBusy(true); setError(null)
+    try {
+      const res = await api.deductionUndo(lastDeduction.batch, inventory)
+      applyServerInventory(res.inventory)
+      setLastDeduction(null)
+      notify(`Undone: restored ${res.restored.join(', ')}.`)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally { setBusy(false) }
+  }
+  return { lastDeduction, undo, busy, error, dismiss: () => { setLastDeduction(null); setError(null) } }
 }

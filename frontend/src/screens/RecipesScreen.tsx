@@ -2,7 +2,8 @@
 import { Icon } from '../components/Icon'
 import { Badge, Banner, EmptyState, ErrorState, Loading, ScreenHeader, Stepper, Toggle } from '../components/ui'
 import { minutesLabel } from '../format'
-import { useMatches } from '../hooks'
+import { groceryFromMatch } from '../grocery'
+import { useAddToGrocery, useMatches } from '../hooks'
 import { href } from '../router'
 import { useStore } from '../state'
 import type { RecipeMatch } from '../types'
@@ -71,6 +72,8 @@ export function RecipesScreen() {
 }
 
 function RecipeCard({ match: m }: { match: RecipeMatch }) {
+  const addToGrocery = useAddToGrocery()
+  const needed = groceryFromMatch(m)
   // Reasons already shown as labelled lines (or as the sample badge) are not repeated.
   const shown = ['Original sample', 'Missing', 'Not enough', 'All required', 'Amount not compared', 'Assumed pantry', 'Enough of every']
   const reasons = m.rank_reasons.filter((r) => !shown.some((p) => r.startsWith(p)))
@@ -85,6 +88,7 @@ function RecipeCard({ match: m }: { match: RecipeMatch }) {
           <p className="meta">
             <span><Icon name="clock" size={18} /> {minutesLabel(m.total_minutes)}</span>
             <span><Icon name="users" size={18} /> {m.servings_requested && m.scale_factor ? `For ${m.servings_requested} (recipe serves ${m.servings})` : `Serves ${m.servings ?? '?'}`}</span>
+            <span>{m.rating ? `Rated ${m.rating.value}/${m.rating.scale_max}` : 'No ratings'}</span>
           </p>
         </div>
       </div>
@@ -98,7 +102,13 @@ function RecipeCard({ match: m }: { match: RecipeMatch }) {
       </div>
       <div className="recipe-card-foot">
         {m.is_sample_data ? <SampleBadgeSmall /> : <span className="muted">{m.source_name}</span>}
-        <span className="muted rating">{m.rating ? `${m.rating.value}/${m.rating.scale_max}` : 'No ratings'}</span>
+        <span className="spacer" />
+        {needed.length > 0 && (
+          <button type="button" className="btn btn-secondary" aria-label={`Add ${needed.length} missing or short item${needed.length === 1 ? '' : 's'} for ${m.title} to the grocery list`}
+            onClick={() => addToGrocery(needed).catch(() => undefined)}>
+            <Icon name="cart" size={20} /> Add {needed.length}
+          </button>
+        )}
         <a className="btn btn-primary" href={href({ name: 'recipe', id: m.recipe_id })}>View <Icon name="right" size={20} /></a>
       </div>
     </article>

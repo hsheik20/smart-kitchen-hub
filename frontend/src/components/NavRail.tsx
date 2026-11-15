@@ -6,7 +6,8 @@ const ITEMS: { route: Route; label: string; icon: string; match: Route['name'][]
   { route: { name: 'home' }, label: 'Home', icon: 'home', match: ['home'] },
   { route: { name: 'scan' }, label: 'Scan', icon: 'scan', match: ['scan'] },
   { route: { name: 'kitchen' }, label: 'My Kitchen', icon: 'kitchen', match: ['kitchen'] },
-  { route: { name: 'recipes' }, label: 'Recipes', icon: 'book', match: ['recipes', 'recipe', 'cook'] },
+  { route: { name: 'recipes' }, label: 'Recipes', icon: 'book', match: ['recipes', 'recipe', 'cook', 'review'] },
+  { route: { name: 'grocery' }, label: 'Grocery', icon: 'cart', match: ['grocery'] },
 ]
 
 export function NavRail({ current, previewControl }: { current: Route; previewControl?: ReactNode }) {

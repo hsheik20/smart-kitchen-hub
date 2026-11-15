@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import { Icon } from '../components/Icon'
+import { UndoBanner } from '../components/UndoBanner'
 import { QuantityEditor, UnitSelect, draftFrom, draftToQuantity, type QuantityDraft } from '../components/QuantityEditor'
 import { AccuracyBadge, Badge, Banner, EmptyState, ScreenHeader, Segmented, Sheet } from '../components/ui'
 import { formatAmount, lookupIngredient, parseAmount } from '../format'
@@ -45,6 +46,7 @@ export function KitchenScreen() {
         </button>
       </ScreenHeader>
 
+      <UndoBanner />
       {stockError && <Banner tone="warn" icon="alert" title="Low-stock status unavailable">{stockError}</Banner>}
 
       {inventory.length === 0 ? (

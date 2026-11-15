@@ -5,6 +5,8 @@ import { NavRail } from './components/NavRail'
 import { Banner } from './components/ui'
 import { useRoute, type Route } from './router'
 import { CookScreen } from './screens/CookScreen'
+import { GroceryScreen } from './screens/GroceryScreen'
+import { ReviewScreen } from './screens/ReviewScreen'
 import { HomeScreen } from './screens/HomeScreen'
 import { KitchenScreen } from './screens/KitchenScreen'
 import { RecipeScreen } from './screens/RecipeScreen'
@@ -25,12 +27,14 @@ function screenFor(route: Route) {
     case 'recipes': return <RecipesScreen />
     case 'recipe': return <RecipeScreen key={route.id} id={route.id} />
     case 'cook': return <CookScreen key={route.id} id={route.id} step={route.step} />
+    case 'grocery': return <GroceryScreen />
+    case 'review': return <ReviewScreen key={route.id} id={route.id} />
   }
 }
 
 export function App() {
   const route = useRoute()
-  const { prefs, setPrefs, storageNotice, dismissNotice } = useStore()
+  const { prefs, setPrefs, storageNotice, dismissNotice, toast } = useStore()
   const kiosk = isKiosk()
   // The bezel only makes sense on a desktop-sized window; phones always get the normal layout.
   const [wide, setWide] = useState(() => window.innerWidth >= MIN_FRAME_WIDTH)
@@ -65,6 +69,7 @@ export function App() {
           </div>
         )}
         {screenFor(route)}
+        {toast && <div className="toast" role="status" aria-live="polite">{toast}</div>}
       </main>
       </div>
     </div>
