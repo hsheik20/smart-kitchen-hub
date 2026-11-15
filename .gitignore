@@ -1,0 +1,26 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+__pycache__/
+.pytest_cache/
+.venv/
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+coverage/
+*.pyc
+*.log
+uploads/
+*.jpg
+*.jpeg
+*.png
+# Allow documentation screenshots despite the image rules above
+!docs/screenshots/*.png
+!docs/screenshots/*.jpg
+!docs/screenshots/*.jpeg
+# Local SQLite databases (planned, ADR-012)
+*.db
+*.sqlite
+*.sqlite3
