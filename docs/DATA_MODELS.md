@@ -1,6 +1,15 @@
 # Data models — proposed (Nov 14, 2026)
 
-**Status: proposed, not implemented.** The only model in code today is `RecipeResult` in `backend/app/main.py`, which uses plain-string ingredients and steps and has no quantities. The models below are the target for Pydantic v2 schemas (and, from P1, SQLite tables). Field names may change during implementation; record material changes in `DECISIONS.md`.
+**Status (updated Nov 14, 2026): partially implemented.** Sections 1–3 (quantities, catalog, recipes, recipe match) and the deduction *preview* models in §5 are implemented in `backend/app/models.py`. Scanning (§4), persisted inventory and transactions (§5), and grocery (§6) are still proposals. The legacy flat `RecipeResult` remains in `backend/app/main.py` as an adapter for the current UI (ADR-016).
+
+**Implemented deviations from the proposal below** (see ADR-016–020):
+- `RecipeSource.is_sample_data: bool` marks the project's original sample recipes.
+- `IngredientCheck` adds `optional` and a status `assumed_staple` (opt-in, presence-only; ADR-018).
+- `RecipeMatch` adds `is_sample_data`, `servings_requested`, `scale_factor`, and summary lists `missing`, `shortages`, `cannot_compare`, `assumed_staples`. `match_pct` counts required (non-optional) ingredients only.
+- `InventoryRecord` (request-only, no timestamps) stands in for `InventoryItem` until SQLite (ADR-017). Its `quantity` defaults to unknown, never zero. It has an optional `low_stock_threshold` (added Nov 14, Phase 3), used only by `POST /api/inventory/stock-status`, which returns derived `StockStatus {id, display_name, status: out|low|ok|unknown, reason}`.
+- The frontend's demo `InventoryItem` (browser localStorage, ADR-022) adds `id`, `created_at`, `updated_at` and is sent to the API without them.
+- `DeductionLine` adds `display_name`, `on_hand`, `proposed_availability`, `note`; skipped lines and optional ingredients default to `include: false`. `DeductionProposal` adds `preview_only`, `unmapped_inventory`, `warnings`.
+- Decimal amounts serialize as JSON strings; reported amounts are rounded to 0.001 (ADR-019). The models below are the target for Pydantic v2 schemas (and, from P1, SQLite tables). Field names may change during implementation; record material changes in `DECISIONS.md`.
 
 ## Design rules
 1. **Availability ≠ quantity.** Whether an ingredient is on hand is stored separately from how much there is and how sure we are.

@@ -48,3 +48,38 @@ Decision: Simulated scanning and demo inventory/grocery data are visibly labelle
 
 ## ADR-015 — Phone/multi-device access deferred and gated on auth
 Decision: Phone sync is P2; until authentication and HTTPS exist, the backend binds to localhost/LAN only. Rationale: inventory and photos are personal data.
+
+---
+## Decisions added Nov 14, 2026 (Phase 2 backend: structured recipes and deterministic logic)
+ADR-001 to ADR-015 are unchanged.
+
+## ADR-016 — Structured `Recipe` is canonical; legacy GET endpoints are an adapter
+Decision: `backend/app/data.py` stores the four original sample recipes as structured `Recipe` records (quantities, notes, substitutions, safety cautions, `RecipeSource` with `is_sample_data: true`), validated against the schema and ingredient catalog at import. `GET /api/recipes` and `GET /api/recipes/{id}` keep their v0.1 flat response shape by deriving it from the structured record (required ingredient names only; step text only), so the current frontend works unchanged. Rationale: one source of truth (ADR-013) without a frontend change in this phase. The flat shape is retired once the full recipe view (SKH-05) consumes the structured record.
+
+## ADR-017 — Stateless matching and deduction preview until SQLite
+Decision: Until persistence exists (ADR-012), `POST /api/recipes/match` and `POST /api/deductions/preview` take inventory records in the request body and store nothing. One inventory record per ingredient per request; duplicates (after alias resolution) are rejected with 422 because there is no rule for which record a deduction should use. Unknown explicit `ingredient_id`s are rejected; unmapped names are kept and returned in `unmapped_inventory`. Rationale: lets matching and deduction logic be built and tested now without pulling SKH-12 forward.
+
+## ADR-018 — Pantry-staple assumption is opt-in and presence-only
+Decision: Catalog ingredients may be flagged `is_staple` (oil, salt, black pepper, water). Matching accepts `assume_staples` (default `false`). When true, a *required* staple that is absent from inventory gets status `assumed_staple`, counts as present for `match_pct`, and is listed in `assumed_staples` and `rank_reasons`. It is never quantity-compared, never overrides an actual inventory record, and never produces a deduction. Rationale: resolves the DATA_MODELS open question on staples without inventing availability or quantities; the user sees exactly what was assumed.
+
+## ADR-019 — Decimal amounts, reporting precision, and rounding direction
+Decision: Amounts are `Decimal`, serialized as JSON strings (e.g. `"14.787"`), and accepted as numbers or strings. Conversions and comparisons use full precision in the shared unit; reported amounts are rounded to 0.001 of their unit. Shortfalls and deductions round **up** and remaining stock rounds **down**, so a real shortfall never displays as zero and remaining stock is never overstated. Scaling by servings never rounds a requirement to zero. Rationale: deterministic, testable output with conservative error direction.
+
+## ADR-020 — Servings scaling and optional ingredients in matching/deductions
+Decision: When both the requested servings and the recipe's servings are known, required amounts are scaled by `requested / recipe` (unknown amounts stay unknown; the original `display_text` is dropped because it no longer describes the scaled amount). Otherwise amounts are used as written and a reason/warning says so. Optional ingredients are excluded from `match_pct` (reported as `optional_missing` when absent) and default to `include: false` in deduction previews. A preview line that would use all remaining stock, or more than inventory shows, is `will_deduct_to_zero` with `proposed_availability: out` for the user to review. Rationale: shortages and deductions are meaningless unless they reflect the amount actually cooked; optional ingredients may not have been used.
+
+---
+## Decisions added Nov 14, 2026 (Phase 3 part 1: touchscreen frontend)
+ADR-001 to ADR-020 are unchanged.
+
+## ADR-021 — Frontend calls the backend for every quantity decision
+Decision: The browser never compares, converts, scales, or sums quantities. Matching, shortfalls, servings scaling and low-stock status come from the API (`POST /api/recipes/match`, `POST /api/inventory/stock-status`); the UI only formats returned values. Two small read endpoints were added so the UI does not duplicate backend data: `GET /api/recipes/{id}/full` (structured recipe) and `GET /api/units`. The browser does map typed names to catalog ids using the catalog's own aliases, only to keep one inventory item per ingredient; the backend still validates. Rationale: CLAUDE.md rule 4 (deterministic, tested logic in one place).
+
+## ADR-022 — Demo inventory and preferences in versioned localStorage
+Decision: Until SQLite (ADR-012), My Kitchen items and UI preferences (servings, time limit, staples toggle, device preview, last cooking position) are stored in browser localStorage under `skh.state` with `version: 1`. A missing or different version, or unreadable data, resets to empty with a visible notice; no silent migration. The UI labels this as demo inventory stored only in this browser. Saving from the simulated scan replaces an existing item's amount after the user sees "Replaces current: …" and confirms by saving. Rationale: a usable demo without pulling persistence forward, while staying honest about where data lives.
+
+## ADR-023 — Display modes: browser, device preview, kiosk
+Decision: The same app renders in three modes. Browser view fills the window responsively. Device preview (a desktop presentation aid, remembered in preferences, only on windows ≥ 900px wide) renders the app at exactly 1280×720 inside a simulated bezel scaled to fit. Kiosk (`?mode=kiosk`) fills the screen with no bezel or toggle and ignores the preview preference. Layout uses CSS container queries on the app root so breakpoints respond to the app's own size, which keeps the framed preview identical to the real 1280×720 screen. Rationale: present the hardware concept on a laptop without implying the Pi build exists, and keep one layout path.
+
+## ADR-024 — No new frontend dependencies
+Decision: Hash-based routing, icons (inline SVG), and UI components are written in-project instead of adding a router, icon or component library. Rationale: small bundle for the Pi, fewer supply-chain and upgrade risks in a five-week project.

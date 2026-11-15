@@ -2,7 +2,7 @@
 
 **Project:** A Raspberry Pi–powered cooking assistant that combines camera-based ingredient recognition, recipe discovery, guided cooking, kitchen inventory, and grocery planning.
 
-**Current state (Nov 14, 2026):** Week 1 scaffold. A *simulated* "scan → recipe match → cooking steps" flow exists: ingredients are picked by hand from a fixed list. There is **no camera capture, AI recognition, inventory, grocery list, quantity tracking, or persistence yet**. Do not describe the simulator as a working scanner.
+**Current state (Nov 14, 2026):** Touchscreen-first React UI (home, simulated scan, My Kitchen, recipe discovery, full recipe view, guided cooking) backed by deterministic quantity-aware matching. Ingredient scanning is **simulated** (the user picks every item; no camera or AI). Inventory is **demo data stored only in the browser** (localStorage); there is no server-side persistence, grocery list, or deduction apply/undo yet.
 
 ## Product areas
 1. **Ingredient scanning** — Pi camera capture, AI recognition (Week 2), user confirms/corrects results, then optionally enters an exact quantity, an estimate, or skips quantity.
@@ -18,24 +18,28 @@ Priorities: **P0** end-to-end scan → confirm → match → full recipe view �
 
 | Area | Capability | Status | Notes |
 |---|---|---|---|
-| Scanning | Ingredient "scan" | Simulated | Toggle 8 fixed ingredient chips; banner says SIMULATION MODE |
-| Scanning | Edit/add ingredient names, quantity entry | Planned | P0 (edit), P0/P1 (quantity) — Week 2 |
+| Scanning | Ingredient "scan" | Simulated | Scan screen: pick from the catalog (`GET /api/ingredients`), type free-text items, or load a fixed "sample suggestions" list. Banner: SIMULATED SCAN — no camera or AI |
+| Scanning | Verify + quantity entry | Implemented (UI) | Per item: exact / estimate / unknown, amount + unit; unknown is saved as `null`, never 0; explicit "Save to My Kitchen" |
 | Scanning | Pi camera capture, AI recognition | Planned | Week 2; hardware not yet purchased |
-| Discovery | Curated demo recipes | Implemented | 4 original recipes in `backend/app/data.py`; names only, no quantities |
-| Discovery | Ingredient matching (matched/missing/%) | Implemented | Presence-only; normalisation + small alias table |
-| Discovery | Max cook-time filter | Implemented | Tested |
-| Discovery | Servings | Partial | Accepted by API; not used to filter or scale |
-| Discovery | Preferences, external provider, ratings | Planned | Seed recipes have no ratings (`null`), UI says "unavailable" |
-| Viewing & cooking | Guided cooking (previous/next) | Implemented | Steps are plain strings |
-| Viewing & cooking | Full recipe view with quantities/notes/substitutions/safety | Planned | Current detail view lists ingredient names only |
+| Discovery | Curated demo recipes | Implemented (sample data) | 4 **original sample recipes** in `backend/app/data.py` with structured quantities, notes, substitutions, safety cautions, provenance; quantities are illustrative, not kitchen-tested; labelled "Sample recipe" in the UI |
+| Discovery | Quantity-aware matching | Implemented | UI calls `POST /api/recipes/match` with the demo inventory: match %, missing, not enough, not checked, assumed staples, ranking reasons |
+| Discovery | Filters: servings, time, pantry staples | Implemented | Servings scale amounts (backend); time limit chips; opt-in "assume pantry staples" toggle |
+| Discovery | Ingredient catalog | Implemented | `GET /api/ingredients`; 10 ingredients with aliases and staple flags |
+| Discovery | Preferences, external provider, ratings | Planned | Sample recipes have no ratings; UI says "No ratings" |
+| Viewing & cooking | Full recipe view | Implemented | `GET /api/recipes/{id}/full`: amounts (scaled when servings differ), preparation, substitutions, directions, step safety notes, food-safety cautions, notes, source/licence note, per-ingredient kitchen status |
+| Viewing & cooking | Guided cooking | Implemented | One step at a time, large Previous/Next, tappable progress bar, step ingredients with amounts, safety notes, arrow keys; links to/from the full recipe; "Continue cooking" on Home |
 | Viewing & cooking | Timers | Planned | Enhancement (P1) |
-| Inventory | Saved ingredients, quantities, deductions, undo, low stock | Planned | P1; needs SQLite (Week 3) |
-| Grocery list | Missing/manual items, purchased status | Planned | P1 |
-| Platform | Persistence | Planned | In-memory only today; SQLite in Week 3 |
+| Inventory | My Kitchen (demo) | Simulated storage | Add / edit / remove items, availability, exact/estimated/unknown amounts. Stored only in this browser (versioned localStorage, `skh.state` v1); labelled "Demo inventory" |
+| Inventory | Low-stock indicators | Implemented (demo) | User-set threshold; status computed by `POST /api/inventory/stock-status`; shown only when amount and threshold are known and comparable |
+| Inventory | Deduction preview | Partial (backend only) | `POST /api/deductions/preview` writes nothing; no UI yet. Apply/undo planned (needs SQLite) |
+| Grocery list | Missing/manual items, purchased status | Planned | P1 — next phase |
+| Platform | Touchscreen layout | Implemented | Designed for 1280×720 landscape; responsive to desktop and phone widths |
+| Platform | Device preview / kiosk | Implemented | Desktop "Device preview" shows the app in a simulated 1280×720 bezel; `?mode=kiosk` fills the screen with no bezel. Not yet tested on Pi hardware |
+| Platform | Server persistence | Planned | SQLite in Week 3 |
 
 ## Architecture
-- `frontend/` — React + TypeScript + Vite touch-oriented UI (currently one file, `src/main.tsx`)
-- `backend/` — FastAPI + Pydantic; seed recipes and deterministic matching (currently `app/main.py`, `app/data.py`)
+- `frontend/` — React + TypeScript + Vite, no extra runtime dependencies. `src/screens/` (Home, Scan, Kitchen, Recipes, Recipe, Cook), `src/components/` (nav rail, device frame, quantity editor, UI primitives, icons), `src/api.ts`, `src/types.ts`, `src/state.tsx` + `src/storage.ts` (versioned localStorage), `src/router.ts` (hash routes), `src/styles.css`
+- `backend/` — FastAPI + Pydantic. `app/models.py` (schemas), `app/units.py` + `app/quantities.py` (units, conversion, comparison), `app/catalog.py` (ingredient catalog), `app/data.py` (sample recipes), `app/matching.py`, `app/deductions.py`, `app/main.py` (routes)
 - `device/` — future Raspberry Pi camera adapter (Picamera2 runs only on Raspberry Pi OS)
 - `docs/` — scope, architecture, data models, decisions, roadmap, backlog, hardware, journal, portfolio copy
 
@@ -59,7 +63,16 @@ npm install
 npm run dev
 ```
 
-Open the URL printed by Vite (typically `http://127.0.0.1:5173`). Select simulated ingredients, find matching seed recipes, and open cooking mode. The frontend proxies `/api` to FastAPI.
+Open the URL printed by Vite (typically `http://127.0.0.1:5173`). The frontend proxies `/api` to FastAPI.
+
+Demo journey: **Home → Add ingredients** (simulated: tap items, verify amounts, save) **→ My Kitchen** (edit items, set a low-stock alert) **→ Recipes** (servings, time, pantry-staple toggle) **→ View → Start guided cooking**.
+
+Display modes:
+- **Browser view** (default): responsive layout filling the window.
+- **Device preview**: the "Device preview" button at the bottom of the side rail shows the app inside a simulated 1280×720 touchscreen bezel, scaled to fit (desktop windows ≥ 900px wide; the choice is remembered).
+- **Kiosk**: open `http://127.0.0.1:5173/?mode=kiosk` — fills the screen with no bezel and no preview toggle (intended for the Pi's Chromium kiosk).
+
+Demo inventory and preferences live in this browser's localStorage under `skh.state`; clear site data to reset.
 
 ## Verification
 ```bash
@@ -72,20 +85,29 @@ cd frontend
 npm run build
 ```
 
-Last verified Nov 14, 2026 (Claude Code session on the owner's Mac): backend 5 passed (1 Starlette/httpx deprecation warning); frontend type-check and production build succeeded. The UI has not yet been screenshotted.
+Last verified Nov 14, 2026 (Claude Code session on the owner's Mac): backend 91 passed (1 Starlette/httpx deprecation warning); frontend type-check and production build succeeded. A scripted headless-Chrome walkthrough (36 checks, 1280×720, device preview, kiosk, 390×844 phone) passed with no console errors; screenshots are in `docs/screenshots/`. Not yet tried by hand on a physical touchscreen.
 
 ## API endpoints
 Implemented:
 - `GET /api/health` — health check; reports `mode: seed-demo`, `vision_enabled: false`
 - `GET /api/recipes?ingredients=chicken,zucchini&max_minutes=45&servings=2` — match seed recipes
 - `GET /api/recipes/{id}` — single recipe (note: returns `match_pct: 0` and empty matched/missing; unused by the UI)
+- `GET /api/ingredients` — ingredient catalog (ids, aliases, staple flags)
+- `POST /api/recipes/match` — quantity-aware matching; body `{inventory: [...], assume_staples, max_minutes, servings}`; stores nothing
+- `POST /api/deductions/preview` — proposed deductions for a recipe; body `{recipe_id, servings_cooked, inventory: [...]}`; **preview only, writes nothing**
+- `GET /api/recipes/{id}/full` — complete structured recipe (used by the full recipe view and guided cooking)
+- `GET /api/units` — canonical unit codes with dimension
+- `POST /api/inventory/stock-status` — derived low-stock status (`out/low/ok/unknown`) for client-supplied inventory; stores nothing
+
+The two original GET recipe endpoints keep their v0.1 flat shape for compatibility (ADR-016); the new UI no longer uses them. Interactive docs: `http://127.0.0.1:8000/docs`.
 
 Planned endpoints (scans, inventory, deductions, grocery list) are listed in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#api-roadmap).
 
 ## Known issues
-- Project folder name ends with a trailing space (`smart-kitchen-hub `); rename before creating the Git repository.
-- Not yet a Git repository; no GitHub URL.
-- Frontend error message says "Cannot reach the backend" even for validation (422) errors.
+- Local Git repository only; no GitHub remote yet.
+- Demo inventory lives in one browser's localStorage; it is not shared between devices and is lost if site data is cleared.
+- Low-stock "can't compare" messages show raw unit codes (e.g. "clove", "g").
+- Touch interaction has been checked only in a headless browser, not on a physical touchscreen.
 - Restricted-instruction recipes show no link to the source URL (no such recipes exist yet).
 
 ## Hardware

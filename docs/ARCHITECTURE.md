@@ -37,7 +37,7 @@ Mac development uses simulated scanning; production adds device capture and visi
 - **Matcher/ranker** [built, presence-only] — compares confirmed ingredients to recipe ingredients; returns matched, missing, match %, and (planned) quantity checks and ranking reasons.
 - **Inventory service** [planned, P1] — inventory items, append-only transaction log, deduction preview/confirm/undo, low-stock evaluation.
 - **Grocery service** [planned, P1] — grocery items; never mutates inventory implicitly.
-- **Frontend** [built: one screen] — React/TS. Target screens: Scan/Confirm, Results, Recipe (full view), Cook (guided), Inventory, Grocery. Desktop for development; Chromium kiosk on the Pi.
+- **Frontend** [built Nov 14: Home, Scan (simulated), My Kitchen, Recipes, Recipe (full view), Cook (guided); Grocery planned] — React/TS, no router or UI library. Hash routes (`#/scan`, `#/recipe/{id}`, `#/cook/{id}/{step}`). Demo inventory and UI preferences in versioned localStorage (ADR-022). All quantity, matching, scaling and low-stock logic is called from the backend; the browser only formats values. Layout targets 1280×720 and uses CSS container queries so the same breakpoints apply inside the desktop device-preview bezel. `?mode=kiosk` for the Pi (ADR-023).
 
 Schemas for all of the above: [DATA_MODELS.md](DATA_MODELS.md).
 
@@ -54,10 +54,12 @@ backend/app/
   db.py                SQLite connection/migrations (P1)
 backend/tests/         one test module per service + API tests
 device/                capture.py, upload.py (Pi only; not imported by backend)
-frontend/src/
-  api/                 typed fetch client
-  screens/             Scan, Results, Recipe, Cook, Inventory, Grocery
-  components/          shared UI (chips, quantity input, demo banner)
+frontend/src/          (as built Nov 14)
+  api.ts, types.ts     typed fetch client + API types
+  state.tsx, storage.ts  app state; versioned localStorage (demo inventory, prefs)
+  router.ts, hooks.ts  hash router; data hooks (match, recipe)
+  screens/             Home, Scan, Kitchen, Recipes, Recipe, Cook (+ recipeParts)
+  components/          NavRail, DeviceFrame, QuantityEditor, ui primitives, Icon
 ```
 
 ## Data strategy
@@ -71,18 +73,23 @@ Implemented:
 - `GET /api/health`
 - `GET /api/recipes?ingredients=&max_minutes=&servings=` (presence-based match)
 - `GET /api/recipes/{id}`
+- `GET /api/ingredients` (Nov 14)
+- `POST /api/recipes/match` — quantity-aware matching; inventory in request body, stateless (ADR-017) (Nov 14)
+- `POST /api/deductions/preview` — deduction preview; inventory in request body, writes nothing (Nov 14).
+- `GET /api/recipes/{id}/full` — structured `Recipe` (Nov 14, Phase 3)
+- `GET /api/units` — unit codes + dimension (Nov 14, Phase 3)
+- `POST /api/inventory/stock-status` — derived low-stock status; stateless (Nov 14, Phase 3) Replaces the planned `POST /api/recipes/{id}/deduction-preview` path below.
 
 Planned (shape may change; see DATA_MODELS.md):
 | Method & path | Purpose | Priority |
 |---|---|---|
-| `GET /api/ingredients` | Canonical ingredient catalog for pickers/autocomplete | P0 |
 | `POST /api/scans` | Create scan from `simulated` list, uploaded image, or Pi capture (multipart, validated) | P0 |
 | `GET /api/scans/{id}` | Candidates and status | P0 |
 | `POST /api/scans/{id}/confirm` | Confirmed ingredients + optional quantities; optionally save to inventory | P0 (save: P1) |
 | `GET /api/recipes` (extended) | Matching using inventory or explicit list, filters, ranking reasons | P0/P1 |
 | `GET/POST/PATCH/DELETE /api/inventory[/{id}]` | Inventory items (every change writes a transaction) | P1 |
 | `GET /api/inventory/transactions` | Change history | P1 |
-| `POST /api/recipes/{id}/deduction-preview` | Proposed deductions for servings cooked; no writes | P1 |
+| `POST /api/deductions/preview` (persisted inventory) | Read inventory from SQLite instead of the request body | P1 |
 | `POST /api/inventory/deductions` | Confirm a proposal (atomic batch) | P1 |
 | `POST /api/inventory/deductions/{batch_id}/undo` | Reverse a batch | P1 |
 | `GET/POST/PATCH/DELETE /api/grocery[/{id}]` | Grocery items | P1 |
