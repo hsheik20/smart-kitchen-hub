@@ -95,9 +95,51 @@ Browser walkthrough (repeatable; no extra dependencies, needs a local Chrome): w
 cd frontend
 npm run walkthrough      # screenshots + report to <system tmp>/skh-walkthrough; exits 1 on any failure
 ```
-It covers both demo journeys, refresh persistence, undo (including the refused-after-edit case), reset, storage migration, 1280×720 overflow and touch-target checks, device preview, kiosk and a 390×844 phone layout. Set `CHROME_PATH` if Chrome is not at the macOS default location.
+It covers both demo journeys, refresh persistence, undo (including the refused-after-edit case), reset, storage migration, 1280×720 overflow and touch-target checks, device preview, kiosk and a 390×844 phone layout. Set `CHROME_PATH` if Chrome is not at the macOS default location, and `BASE_URL` to test another frontend origin (e.g. `BASE_URL=http://127.0.0.1:4173/` for `npm run preview`).
 
-Last verified Nov 15, 2026 (Claude Code session on the owner's Mac): backend 108 passed (1 Starlette/httpx deprecation warning); frontend type-check and production build succeeded; walkthrough 29 checks + 11 layout measurements passed with no console errors. Screenshots in `docs/screenshots/`. Not yet tried by hand on a physical touchscreen.
+Last verified Nov 15, 2026 (Claude Code session on the owner's Mac; deployment prep): backend 120 passed (1 Starlette/httpx deprecation warning); frontend build succeeded; walkthrough 29/29 both against the dev servers and against a production-style cross-origin build (see “Deploying to Render”). Earlier the same day: backend 108 passed (1 Starlette/httpx deprecation warning); frontend type-check and production build succeeded; walkthrough 29 checks + 11 layout measurements passed with no console errors. Screenshots in `docs/screenshots/`. Not yet tried by hand on a physical touchscreen.
+
+## Deploying to Render (prepared, not yet deployed)
+Source: public GitHub repository **https://github.com/hsheik20/smart-kitchen-hub** (branch `main`). No Render services have been created yet. The backend is stateless (it stores no inventory, groceries, photos or accounts); demo data stays in each visitor's browser (ADR-028). No secrets are needed.
+
+Create two services from the same repository: the backend first, then the frontend, then add the frontend's URL to the backend's `CORS_ORIGINS`.
+
+**1. Backend — Render *Web Service* (Python)**
+
+| Setting | Value |
+|---|---|
+| Root Directory | `backend` |
+| Runtime | Python 3 |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Health Check Path | `/api/health` |
+
+Environment variables (not secret):
+
+| Name | Value | Notes |
+|---|---|---|
+| `CORS_ORIGINS` | your frontend's URL, e.g. `https://<your-frontend>.onrender.com` | Comma-separated, scheme + host only, no trailing path. `*` is rejected at startup. Unset = local dev origins only (`localhost`/`127.0.0.1` on ports 5173 and 4173). |
+| `PYTHON_VERSION` | `3.12.6` (optional) | Matches the version used for local testing; omit to use Render's default. |
+
+**2. Frontend — Render *Static Site***
+
+| Setting | Value |
+|---|---|
+| Root Directory | `frontend` |
+| Build Command | `npm ci && npm run build` |
+| Publish Directory | `dist` |
+| Redirects/Rewrites | none needed — the app uses hash routes (`/#/kitchen`), so the server only ever serves `/index.html`. Kiosk mode is `/?mode=kiosk`. |
+
+Environment variables (build time; baked into the public bundle, so never put secrets here):
+
+| Name | Value | Notes |
+|---|---|---|
+| `VITE_API_BASE_URL` | your backend's URL, e.g. `https://<your-backend>.onrender.com` | No trailing `/api`. Changing it requires a redeploy of the static site. Unset = relative `/api` via the Vite dev proxy (local development). |
+| `NODE_VERSION` | `20` or newer (optional) | Vite 6 needs Node 18+; local testing used Node 24. |
+
+**3.** Copy the static site's URL into the backend's `CORS_ORIGINS` and let the backend redeploy. Open the static site, check the Home badge says “Backend connected”, and run through a demo journey.
+
+Local checks that mirror this setup: a clean `npm ci && npm run build` with `VITE_API_BASE_URL` set, served as static files, against a fresh `pip install -r requirements.txt` backend started with the exact start command and `CORS_ORIGINS` set to the static origin — the browser walkthrough passed 29/29 with no console errors (Nov 15).
 
 ## API endpoints
 Implemented:
@@ -119,7 +161,8 @@ The two original GET recipe endpoints keep their v0.1 flat shape for compatibili
 Planned endpoints (scans, inventory, deductions, grocery list) are listed in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#api-roadmap).
 
 ## Known issues
-- Local Git repository only; no GitHub remote yet.
+- Not deployed yet. The code is prepared for Render (see “Deploying to Render”), but no Render services exist.
+- A Render free-tier backend sleeps when idle; the first request after a pause can take up to about a minute, and the app shows “Cannot reach the backend … retry” meanwhile.
 - Demo inventory, groceries and the pending undo live in one browser's localStorage (`skh.state`, version 2); not shared between devices, lost if site data is cleared.
 - Only the most recent cooking update can be undone.
 - When a deduction uses up an item, its remaining amount is recorded as unknown (“used up”), not zero; the user can correct it by hand.

@@ -96,3 +96,10 @@ Decision: Grocery items live in browser localStorage next to the demo inventory.
 
 ## ADR-027 — Browser storage version 2
 Decision: `skh.state` moves to `version: 2` (`inventory`, `groceries`, `lastDeduction`, `prefs`). Version 1 data is migrated explicitly (inventory and preferences kept, empty grocery list); any other version or unreadable data resets with a visible notice. "Reset demo data" (with confirmation) clears inventory, groceries, the pending undo and the cooking position, and keeps display preferences. Rationale: adding groceries without discarding a user's demo inventory.
+
+---
+## Decisions added Nov 15, 2026 (deployment preparation)
+ADR-001 to ADR-027 are unchanged except where ADR-028 narrows ADR-015.
+
+## ADR-028 — Public stateless demo deployment on Render; configuration by environment
+Decision: The demo may be deployed publicly as a Render static site (frontend) plus a Render web service (backend). This narrows ADR-015 (backend on localhost/LAN only until authentication): the deployed backend stores nothing — no inventory, groceries, photos, accounts or logs of user data; every request carries the browser's demo data and receives a computed result — so there is no personal data to protect server-side. Phone sync, uploads, persistence and anything storing user data remain gated on authentication + HTTPS as ADR-015 says. Configuration is by non-secret environment variables only: `VITE_API_BASE_URL` (frontend, build time; unset = relative `/api` through the Vite dev proxy) and `CORS_ORIGINS` (backend; explicit comma-separated origins, `*` refused at startup, unset = local dev origins). CORS allows `GET` and `POST` with `Content-Type` only, no credentials. Hash routing means the static site needs no rewrite rules. Rationale: a shareable demo for the course without weakening the privacy rule for features that will store data.

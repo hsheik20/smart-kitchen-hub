@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from .config import cors_origins
 from .catalog import BY_ID, INGREDIENTS, clean_text, lookup_id
 from .data import RECIPES, RECIPES_BY_ID
 from .deductions import preview_deduction
@@ -31,7 +32,10 @@ from .stock import stock_statuses
 from .units import UNITS
 
 app = FastAPI(title="Smart Kitchen Hub API", version="0.2.0")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["GET"], allow_headers=["*"])
+# Origins come from CORS_ORIGINS (see app/config.py); unset = local dev only. POST is needed for
+# matching, deductions and quantity combining when the frontend is served from another origin.
+app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["GET", "POST"],
+                   allow_headers=["Content-Type"], allow_credentials=False)
 
 
 def normalize(value: str) -> str:

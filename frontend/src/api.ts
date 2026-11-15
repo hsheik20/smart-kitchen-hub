@@ -10,15 +10,23 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Backend origin from VITE_API_BASE_URL (build time). Empty → same-origin relative `/api/...`,
+ * which the Vite dev server proxies to FastAPI on 127.0.0.1:8000.
+ */
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '')
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   try {
-    response = await fetch(path, {
+    response = await fetch(API_BASE_URL + path, {
       ...init,
       headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
     })
   } catch {
-    throw new ApiError('Cannot reach the Smart Kitchen Hub backend. Start FastAPI on port 8000.', null)
+    throw new ApiError(API_BASE_URL
+      ? 'Cannot reach the Smart Kitchen Hub backend. If it was idle it may be starting up — wait a moment and retry.'
+      : 'Cannot reach the Smart Kitchen Hub backend. Start FastAPI on port 8000.', null)
   }
   if (!response.ok) {
     let detail = `Request failed (${response.status})`

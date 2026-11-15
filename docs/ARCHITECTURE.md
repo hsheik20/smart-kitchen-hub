@@ -62,6 +62,9 @@ frontend/src/          (as built Nov 14)
   components/          NavRail, DeviceFrame, QuantityEditor, ui primitives, Icon
 ```
 
+## Deployment (prepared Nov 15, not yet live)
+Render static site (`frontend/`, `npm ci && npm run build`, publish `dist`) calling a Render web service (`backend/`, `uvicorn app.main:app --host 0.0.0.0 --port $PORT`). The API origin is baked in with `VITE_API_BASE_URL`; the backend allows only the origins in `CORS_ORIGINS` (ADR-028). The backend stays stateless, so restarts and free-tier sleep lose nothing. Details and dashboard settings: README “Deploying to Render”.
+
 ## Data strategy
 - Weeks 1–2: in-memory seed data; no database.
 - Week 3: SQLite (single local file, git-ignored) for inventory items, inventory transactions, grocery items, and cached provider recipes (within provider terms). Stdlib `sqlite3` or SQLModel — decide when SKH-12 starts.
