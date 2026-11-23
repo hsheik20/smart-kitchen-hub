@@ -21,6 +21,15 @@ If behind schedule, cut in this order: timers (SKH-18) → low stock (SKH-15) �
 | Simulated scan → recipe → cooking demo, screenshot, log blockers | Sat Nov 14 | **Partial.** Flow exists; backend tests (5 passed) and frontend build verified Nov 14. Not yet run/screenshotted in a browser by the owner. Inventory and grocery demo screens (SKH-19) not built. |
 | Portfolio link update and submit | Sun Nov 15 11:59 PM | Not started. Needs GitHub URL. Week 6 quiz, reflection PDF, and learning-group minutes are separate class obligations. |
 
+## Week 2 status (recorded Nov 22, 2026)
+| Planned | Actual status |
+|---|---|
+| Pi camera photo (or labelled fallback) | **Partial.** Pi 5, touchscreen and Arducam IMX708 acquired and configured; camera ribbon-cable connectivity troubleshot; test image captured on the Pi. Not connected to the app; the labelled simulated scan remains the in-app path. |
+| Upload validation, vision/mock adapter | Not started. |
+| Confirm/edit UI with quantity entry | Done earlier (Week 1, simulated scan → verify amounts). |
+| Structured seed recipes, full recipe view | Done earlier (Week 1). |
+| Pi touchscreen kiosk (W4, SKH-17) | Hardware in hand; app not yet run on the Pi display. |
+
 ## Major dependency gates
 - Hardware order: verify stock and delivered price; order early in Week 2 at the latest to allow troubleshooting.
 - Camera smoke test before AI integration.

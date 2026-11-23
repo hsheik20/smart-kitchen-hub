@@ -103,3 +103,9 @@ ADR-001 to ADR-027 are unchanged except where ADR-028 narrows ADR-015.
 
 ## ADR-028 — Public stateless demo deployment on Render; configuration by environment
 Decision: The demo may be deployed publicly as a Render static site (frontend) plus a Render web service (backend). This narrows ADR-015 (backend on localhost/LAN only until authentication): the deployed backend stores nothing — no inventory, groceries, photos, accounts or logs of user data; every request carries the browser's demo data and receives a computed result — so there is no personal data to protect server-side. Phone sync, uploads, persistence and anything storing user data remain gated on authentication + HTTPS as ADR-015 says. Configuration is by non-secret environment variables only: `VITE_API_BASE_URL` (frontend, build time; unset = relative `/api` through the Vite dev proxy) and `CORS_ORIGINS` (backend; explicit comma-separated origins, `*` refused at startup, unset = local dev origins). CORS allows `GET` and `POST` with `Content-Type` only, no credentials. Hash routing means the static site needs no rewrite rules. Rationale: a shareable demo for the course without weakening the privacy rule for features that will store data.
+
+---
+## Decisions added Nov 22, 2026 (Week 2 hardware)
+
+## ADR-029 — Hardware as acquired
+Decision: The project hardware is a Raspberry Pi 5 running Raspberry Pi OS, a touchscreen display, and an Arducam IMX708 camera module (instead of the official Camera Module 3 named in ADR-005; same sensor family). The camera has produced a test image on the Pi; no capture code exists yet. ADR-004 still applies: Pi-only camera code stays in `device/` and is never imported by the backend or its tests. Rationale: records what was actually bought so later capture and kiosk work (SKH-07, SKH-17) targets the real parts.

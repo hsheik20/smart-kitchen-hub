@@ -1,6 +1,6 @@
 # Raspberry Pi device adapter (planned)
 
-No camera hardware or Pi-specific modules are implemented yet. Do not install Picamera2 on macOS; develop and test the backend/frontend independently. Nothing in `backend/` may import from this folder.
+Hardware status (Nov 22): the Pi 5 and Arducam IMX708 camera are set up and a test image has been captured on the Pi, but no Pi-specific modules (capture/upload) are implemented in this folder yet. Do not install Picamera2 on macOS; develop and test the backend/frontend independently. Nothing in `backend/` may import from this folder.
 
 Role in the system: capture a still image and send it to `POST /api/scans` (planned) with `source = pi_camera`. Recognition, confirmation, quantities, inventory, and recipes are all handled by the backend and UI. Until hardware works, scans use `source = simulated` (manual selection) or `upload` (image file from a Mac), and the UI labels them as such.
 

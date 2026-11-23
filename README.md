@@ -2,7 +2,9 @@
 
 **Project:** A Raspberry Pi–powered cooking assistant that combines camera-based ingredient recognition, recipe discovery, guided cooking, kitchen inventory, and grocery planning.
 
-**Current state (Nov 15, 2026):** Touchscreen-first React UI covering all five areas: home, simulated scan, My Kitchen, recipe discovery, full recipe view, guided cooking, deduction review with undo, and a grocery list. Ingredient scanning is **simulated** (the user picks every item; no camera or AI). Inventory and groceries are **demo data stored only in the browser** (localStorage); there is no server-side persistence yet. Recipes are original sample data.
+**Current state (Nov 22, 2026):** The React/TypeScript + FastAPI software prototype has a touchscreen-first interface with simulated ingredient scanning, kitchen inventory management, recipe discovery, guided cooking, inventory deductions with undo, and a grocery list. Scanning is still **simulated** (the user picks every item; no camera or AI in the app). Inventory and groceries are **demo data stored only in the browser** (localStorage), and recipes are original sample data.
+
+**Week 2 hardware progress:** the Raspberry Pi 5 (running Raspberry Pi OS), touchscreen display, and Arducam IMX708 camera module have been acquired and set up. After troubleshooting the camera ribbon-cable connection, the camera works and has captured a test image on the Pi. Camera-based ingredient recognition and full hardware/software integration (the app running on the Pi touchscreen, camera capture feeding the scan flow) have **not** been built yet.
 
 ## Product areas
 1. **Ingredient scanning** — Pi camera capture, AI recognition (Week 2), user confirms/corrects results, then optionally enters an exact quantity, an estimate, or skips quantity.
@@ -20,7 +22,7 @@ Priorities: **P0** end-to-end scan → confirm → match → full recipe view �
 |---|---|---|---|
 | Scanning | Ingredient "scan" | Simulated | Scan screen: pick from the catalog (`GET /api/ingredients`), type free-text items, or load a fixed "sample suggestions" list. Banner: SIMULATED SCAN — no camera or AI |
 | Scanning | Verify + quantity entry | Implemented (UI) | Per item: exact / estimate / unknown, amount + unit; unknown is saved as `null`, never 0; explicit "Save to My Kitchen" |
-| Scanning | Pi camera capture, AI recognition | Planned | Week 2; hardware not yet purchased |
+| Scanning | Pi camera capture, AI recognition | Partial (hardware only) | Pi 5, touchscreen and Arducam IMX708 camera set up; a test image was captured on the Pi (Nov 22). No capture/upload code, no recognition, and the app's scan flow is still simulated |
 | Discovery | Curated demo recipes | Implemented (sample data) | 4 **original sample recipes** in `backend/app/data.py` with structured quantities, notes, substitutions, safety cautions, provenance; quantities are illustrative, not kitchen-tested; labelled "Sample recipe" in the UI |
 | Discovery | Quantity-aware matching | Implemented | UI calls `POST /api/recipes/match` with the demo inventory: match %, missing, not enough, not checked, assumed staples, ranking reasons |
 | Discovery | Filters: servings, time, pantry staples | Implemented | Servings scale amounts (backend); time limit chips; opt-in "assume pantry staples" toggle |
@@ -173,7 +175,9 @@ Planned endpoints (scans, inventory, deductions, grocery list) are listed in [do
 - Restricted-instruction recipes show no link to the source URL (no such recipes exist yet).
 
 ## Hardware
-Decision: Raspberry Pi 5 2GB or 4GB, official Camera Module 3, official 7-inch Touch Display 2. Verify retailer stock, total delivered price, cable and enclosure compatibility before ordering. The 7-inch panel is portrait-native; test landscape layout before enclosure design. See [docs/HARDWARE.md](docs/HARDWARE.md).
+Status (Nov 22, 2026): Raspberry Pi 5 running Raspberry Pi OS, touchscreen display, and Arducam IMX708 camera module acquired and configured; camera ribbon-cable connectivity was troubleshot and a test image captured. The app has not yet been run on the Pi touchscreen, and the camera is not yet connected to the app. See [docs/HARDWARE.md](docs/HARDWARE.md).
+
+Original plan: Raspberry Pi 5 2GB or 4GB, official Camera Module 3, official 7-inch Touch Display 2. Verify retailer stock, total delivered price, cable and enclosure compatibility before ordering. The 7-inch panel is portrait-native; test landscape layout before enclosure design. See [docs/HARDWARE.md](docs/HARDWARE.md).
 
 ## Privacy, safety, rights
 - No secrets in git; provider keys stay server-side in environment variables.
